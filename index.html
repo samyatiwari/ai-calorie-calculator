@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Calorie Estimator</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
+    .container { background: white; padding: 30px; border-radius: 15px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #result { margin-top: 20px; font-size: 1.5rem; color: #333; min-height: 50px; }
+    #preview { max-width: 300px; margin-top: 15px; display: none; border-radius: 8px; }
+    button { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>🍔 AI Calorie Estimator</h2>
+  <input type="file" id="imageUpload" accept="image/*" onchange="showPreview(event)" />
+  <br>
+  <img id="preview" src="" alt="Image Preview" />
+  <br><br>
+  <button onclick="predict()">Calculate Calories</button>
+  <div id="result"></div>
+</div>
+
+<!-- Load TensorFlow.js and Teachable Machine libraries -->
+<script src="https://jsdelivr.net"></script>
+<script src="https://jsdelivr.net"></script>
+
+<script>
+  // Changed variable name to avoid browser conflict with 'URL'
+  const MODEL_PATH = "https://withgoogle.com";
+  let model;
+
+  async function loadModel() {
+    if (!model) {
+      model = await tmImage.load(MODEL_PATH + "model.json", MODEL_PATH + "metadata.json");
+    }
+  }
+
+  function showPreview(event) {
+    const reader = new FileReader();
+    reader.onload = function() {
+      const preview = document.getElementById('preview');
+      preview.src = reader.result;
+      preview.style.display = 'inline-block';
+    }
+    reader.readAsDataURL(event.target.files[0]);
+  }
+
+  async function predict() {
+    const fileInput = document.getElementById("imageUpload");
+    if (fileInput.files.length === 0) return alert("Please select an image first.");
+
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerText = "Analyzing... 🧐";
+
+    try {
+      await loadModel();
+      const img = document.getElementById('preview');
+      const prediction = await model.predict(img);
+
+      // Find the class with the highest probability
+      let bestMatch = prediction[0];
+      for (let i = 1; i < prediction.length; i++) {
+        if (prediction[i].probability > bestMatch.probability) {
+          bestMatch = prediction[i];
+        }
+      }
+
+      const calories = getCalories(bestMatch.className);
+      resultDiv.innerHTML = `<strong>${bestMatch.className}</strong> 🍽️<br>Calories: ${calories}`;
+    } catch (err) {
+      console.error(err);
+      resultDiv.innerText = "Error: Could not process the image.";
+    }
+  }
+
+  function getCalories(food) {
+    const f = food.toLowerCase().trim();
+    const data = {
+      "pizza": "285 kcal/slice",
+      "burger": "250 kcal",
+      "salad": "150 kcal",
+      "alfredo pasta": "220 kcal",
+      "cake": "350 kcal",
+      "dal": "150 kcal/bowl",
+      "gulab jamun": "150 kcal/piece",
+      "fried rice": "250 kcal/cup"
+    };
+    return data[f] || "Unknown calories";
+  }
+</script>
+
+</body>
+</html>
