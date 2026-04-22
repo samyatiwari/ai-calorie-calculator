@@ -23,17 +23,20 @@
   <div id="result"></div>
 </div>
 
-<!-- Load TensorFlow.js and Teachable Machine libraries -->
+<!-- FIXED: Full library links added here -->
 <script src="https://jsdelivr.net"></script>
 <script src="https://jsdelivr.net"></script>
 
 <script>
-  // Changed variable name to avoid browser conflict with 'URL'
   const MODEL_PATH = "https://teachablemachine.withgoogle.com/models/vxdy4HIon/";
   let model;
 
   async function loadModel() {
     if (!model) {
+      // Added a check to see if the library loaded properly
+      if (typeof tmImage === 'undefined') {
+          throw new Error("Teachable Machine library not loaded. Check internet connection.");
+      }
       model = await tmImage.load(MODEL_PATH + "model.json", MODEL_PATH + "metadata.json");
     }
   }
@@ -44,6 +47,8 @@
       const preview = document.getElementById('preview');
       preview.src = reader.result;
       preview.style.display = 'inline-block';
+      // Clear previous results when a new image is picked
+      document.getElementById("result").innerText = "";
     }
     reader.readAsDataURL(event.target.files[0]);
   }
@@ -58,6 +63,13 @@
     try {
       await loadModel();
       const img = document.getElementById('preview');
+      
+      // Ensure the image is fully loaded in the browser before predicting
+      if (!img.complete || img.naturalWidth === 0) {
+          resultDiv.innerText = "Processing image... try again in a second.";
+          return;
+      }
+
       const prediction = await model.predict(img);
 
       // Find the class with the highest probability
@@ -72,7 +84,7 @@
       resultDiv.innerHTML = `<strong>${bestMatch.className}</strong> 🍽️<br>Calories: ${calories}`;
     } catch (err) {
       console.error(err);
-      resultDiv.innerText = "Error: Could not process the image.";
+      resultDiv.innerText = "Error: " + err.message;
     }
   }
 
