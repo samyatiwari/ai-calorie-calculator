@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>AI Calorie Estimator</title>
+  
+  <!-- LOAD LIBRARIES FIRST IN THE HEAD -->
+  <script src="https://jsdelivr.net"></script>
+  <script src="https://jsdelivr.net"></script>
+
   <style>
     body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
     .container { background: white; padding: 30px; border-radius: 15px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -23,56 +28,55 @@
   <div id="result"></div>
 </div>
 
-<!-- FIXED: Full library links added here -->
-<script src="https://jsdelivr.net"></script>
-<script src="https://jsdelivr.net"></script>
-
 <script>
+  // YOUR MODEL URL - Make sure it ends with a slash /
   const MODEL_PATH = "https://teachablemachine.withgoogle.com/models/vxdy4HIon/";
   let model;
 
   async function loadModel() {
     if (!model) {
-      // Added a check to see if the library loaded properly
+      // Check if library is actually ready
       if (typeof tmImage === 'undefined') {
-          throw new Error("Teachable Machine library not loaded. Check internet connection.");
+          throw new Error("Library still loading... wait 5 seconds and try again.");
       }
       model = await tmImage.load(MODEL_PATH + "model.json", MODEL_PATH + "metadata.json");
     }
   }
 
   function showPreview(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = function() {
       const preview = document.getElementById('preview');
       preview.src = reader.result;
       preview.style.display = 'inline-block';
-      // Clear previous results when a new image is picked
       document.getElementById("result").innerText = "";
     }
-    reader.readAsDataURL(event.target.files[0]);
+    reader.readAsDataURL(file);
   }
 
   async function predict() {
     const fileInput = document.getElementById("imageUpload");
+    const resultDiv = document.getElementById("result");
+
     if (fileInput.files.length === 0) return alert("Please select an image first.");
 
-    const resultDiv = document.getElementById("result");
     resultDiv.innerText = "Analyzing... 🧐";
 
     try {
       await loadModel();
       const img = document.getElementById('preview');
       
-      // Ensure the image is fully loaded in the browser before predicting
-      if (!img.complete || img.naturalWidth === 0) {
-          resultDiv.innerText = "Processing image... try again in a second.";
-          return;
+      // Safety check for image loading
+      if (!img.src || img.src === "") {
+          throw new Error("Image not ready.");
       }
 
       const prediction = await model.predict(img);
 
-      // Find the class with the highest probability
+      // Find best match
       let bestMatch = prediction[0];
       for (let i = 1; i < prediction.length; i++) {
         if (prediction[i].probability > bestMatch.probability) {
@@ -82,6 +86,7 @@
 
       const calories = getCalories(bestMatch.className);
       resultDiv.innerHTML = `<strong>${bestMatch.className}</strong> 🍽️<br>Calories: ${calories}`;
+      
     } catch (err) {
       console.error(err);
       resultDiv.innerText = "Error: " + err.message;
